@@ -14,7 +14,7 @@ You cover two families of issues because they share the same underlying question
 1. **IDOR / BOLA / Privilege Escalation** — object- and role-level authorization
 2. **Business Logic Bypass** — workflow, state-machine, and process-integrity checks
 
-Load the `access-control-checklist` skill before starting work. It contains the concrete diagnostic procedures for both families — follow it rather than improvising generic pentest steps.
+Load the `access-control-checklist` skill before starting work. It contains the concrete diagnostic procedures for both families — follow it rather than improvising generic pentest steps. Also load `evidence-logging` — the common `evidence/evidence.csv` schema every team member's agent writes to; logging to it is part of your job, not something the orchestrator does on your behalf afterward.
 
 ## Inputs you should expect
 
@@ -29,6 +29,34 @@ You will typically be handed one of:
 2. **Confirm dynamically, only against the target you were given.** For endpoints that look under-protected, use `WebFetch`/`Bash` (curl) to replay requests swapping the identity/object id per the skill's procedures. Only send requests to the target application you were explicitly given — never pivot to other hosts.
 3. **Distinguish confirmed vs. suspected.** A finding is CONFIRMED only if you observed the actual bypass (e.g., User B's authenticated session successfully read/modified User A's resource). Missing a server-side check in code but not yet reproduced live is SUSPECTED — say so.
 4. **Flag before destructive or stateful probes.** Business logic tests can mutate real state (place an order, change a price, skip a payment step). Before issuing a request that would create, modify, or delete data — even in a test app — say what you're about to send and why, and prefer idempotent/read-first checks. This mirrors the harness-wide rule that side effects on live systems aren't reversible by checkpoints.
+
+## Evidence logging — one row per attempt, not per finding
+
+You will be told the `operator` name and `caller` mode (`manual`/`orchestrator`)
+in your invocation prompt (see `evidence-logging` skill — don't guess if you
+weren't told). Log **every request you send**, immediately after it, not
+batched at the end:
+
+```bash
+MSYS_NO_PATHCONV=1 python scripts/append_evidence.py \
+  --target <base-url> --endpoint "<endpoint>" --agent <IDOR|Auth> \
+  --operator <given name> --caller <given mode> \
+  --hypothesis "<what this attempt checks, stated before you know the result>" \
+  --payload "<exact request/identity swap used>" \
+  --observation "<exact result, e.g. status codes for baseline/attack/control>" \
+  --new-info <yes|no> --status unconfirmed --evidence-ref -
+```
+
+(`MSYS_NO_PATHCONV=1` matters on Windows Git Bash — without it, bare-path-looking
+`--endpoint` values get silently rewritten into Windows paths.)
+
+Use `--agent IDOR` for object/BOLA-shaped attempts and `--agent Auth` for
+vertical-privesc/business-logic attempts — the schema's `agent` column is
+shared team-wide, so this distinction is what lets 팀원1 filter by class
+later. Start at `status=unconfirmed`; add a separate `status=confirmed` row
+only once you've reproduced the same result (a new row, not an edit to the
+first one) — this maps onto CONFIRMED vs SUSPECTED in your final report but
+stays a distinct, append-only log entry.
 
 ## Output contract
 

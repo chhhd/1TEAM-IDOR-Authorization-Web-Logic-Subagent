@@ -11,6 +11,7 @@
 | Subagent 정의 | `.claude/agents/access-control-agent.md` | IDOR/BOLA/수직·수평 권한상승/비즈니스 로직 우회를 다루는 access-control subagent. injection류는 명시적으로 스코프 밖 |
 | 진단 절차 skill | `.claude/skills/access-control-checklist/SKILL.md` | 두 체크 계열(IDOR/BOLA/PrivEsc, Business Logic Bypass)을 Check 1~5 절차로 구조화 |
 | 검증용 취약 앱 | `testapp/app.py` | IDOR(`/api/orders/<id>`), 정상 대조군(`/api/profile/<id>`), 수직 권한상승(`/admin/stats`), 비즈니스 로직 우회(`/api/coupon/redeem`) — 127.0.0.1:5055 |
+| 증적 기록(evidence.csv) | `evidence/`, `scripts/` | access-control-agent가 남기는 시도 로그 — 아래 참고 |
 
 ## 설계 요점
 
@@ -45,6 +46,25 @@ python3 testapp/app.py &     # 127.0.0.1:5055
 
 토큰: `alice-token`(id=1, user), `bob-token`(id=2, user), `admin-token`(id=3, admin).
 예: `curl -H "Authorization: Bearer alice-token" http://127.0.0.1:5055/api/orders/102`
+
+## 증적을 남기는 과정 (evidence.csv)
+
+`access-control-agent.md`는 evidence-logging skill을 로드하고, **보낸
+요청 하나하나마다** `evidence/evidence.csv`에 즉시 한 행을 남긴다. 객체/BOLA류
+시도는 `agent=IDOR`, 수직 권한상승·비즈니스 로직류 시도는 `agent=Auth`로
+구분해서 기록한다 — 손 편집 대신 `scripts/append_evidence.py`로만 쓴다.
+
+**실제로 검증됨** — `evidence/evidence.csv`의 8행은 이 agent를 testapp에
+실제로 돌려서 나온 결과다: `/api/orders/<id>` IDOR(baseline→attack→control→
+재현확인, `agent=IDOR`), `/admin/stats` 수직 권한상승(baseline→attack→
+sanity control→재현확인, `agent=Auth`). `python scripts/confirmed_summary.py`를
+돌리면 unconfirmed 6건은 걸러지고 confirmed 2건만 나온다.
+
+> Windows Git Bash(MSYS2)는 `--endpoint` 값이 순수 경로 모양이면 조용히
+> 윈도우 경로로 바꿔치기하는 문제가 있다(다른 팀원 repo에서 실제로 겪음).
+> 이번 8행은 `MSYS_NO_PATHCONV=1`을 붙여서 기록했고 `tail`로 직접 확인해
+> 정상임을 검증했다 — `scripts/append_evidence.py` docstring과
+> `evidence/README.md`에 반영돼 있다.
 
 ## 다른 저장소와의 관계
 
