@@ -1,6 +1,6 @@
 # 1TEAM-IDOR-Authorization-Web-Logic-Subagent
 
-팀원4(박나현) — IDOR / Authorization / Web Logic Subagent 담당 산출물.
+팀원4(팀원4) — IDOR / Authorization / Web Logic Subagent 담당 산출물.
 독립 실행형(standalone) 버전 — 팀 공용 하네스(`dast-harness`) 없이도 그 자체로
 동작하고 테스트할 수 있게 구성돼 있다.
 
