@@ -14,7 +14,7 @@ You cover two families of issues because they share the same underlying question
 1. **IDOR / BOLA / Privilege Escalation** — object- and role-level authorization
 2. **Business Logic Bypass** — workflow, state-machine, and process-integrity checks
 
-Load the `access-control-checklist` skill before starting work. It contains the concrete diagnostic procedures for both families — follow it rather than improvising generic pentest steps. Also load `evidence-logging` — the common `evidence/evidence.csv` schema every team member's agent writes to; logging to it is part of your job, not something the orchestrator does on your behalf afterward.
+Load the `access-control` skill before starting work. It contains the concrete diagnostic procedures for both families — follow it rather than improvising generic pentest steps. Also load `evidence-logging` — the common `evidence/evidence.csv` schema every team member's agent writes to; logging to it is part of your job, not something the orchestrator does on your behalf afterward.
 
 ## Inputs you should expect
 

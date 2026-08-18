@@ -9,7 +9,7 @@
 | 산출물 | 위치 | 내용 |
 |---|---|---|
 | Subagent 정의 | `.claude/agents/access-control-agent.md` | IDOR/BOLA/수직·수평 권한상승/비즈니스 로직 우회를 다루는 access-control subagent. injection류는 명시적으로 스코프 밖 |
-| 진단 절차 skill | `.claude/skills/access-control-checklist/SKILL.md` | 두 체크 계열(IDOR/BOLA/PrivEsc, Business Logic Bypass)을 Check 1~5 절차로 구조화 |
+| 진단 절차 skill | `.claude/skills/access-control/SKILL.md` | 두 체크 계열(IDOR/BOLA/PrivEsc, Business Logic Bypass)을 Check 1~5 절차로 구조화 |
 | 검증용 취약 앱 | `testapp/app.py` | IDOR(`/api/orders/<id>`), 정상 대조군(`/api/profile/<id>`), 수직 권한상승(`/admin/stats`), 비즈니스 로직 우회(`/api/coupon/redeem`) — 127.0.0.1:5055 |
 | 증적 기록(evidence.csv) | `evidence/`, `scripts/` | access-control-agent가 남기는 시도 로그 — 아래 참고 |
 
@@ -54,11 +54,14 @@ python3 testapp/app.py &     # 127.0.0.1:5055
 시도는 `agent=IDOR`, 수직 권한상승·비즈니스 로직류 시도는 `agent=Auth`로
 구분해서 기록한다 — 손 편집 대신 `scripts/append_evidence.py`로만 쓴다.
 
-**실제로 검증됨** — `evidence/evidence.csv`의 8행은 이 agent를 testapp에
+**실제로 검증됨** — `evidence/evidence.csv`의 12행은 이 agent를 testapp에
 실제로 돌려서 나온 결과다: `/api/orders/<id>` IDOR(baseline→attack→control→
 재현확인, `agent=IDOR`), `/admin/stats` 수직 권한상승(baseline→attack→
-sanity control→재현확인, `agent=Auth`). `python scripts/confirmed_summary.py`를
-돌리면 unconfirmed 6건은 걸러지고 confirmed 2건만 나온다.
+sanity control→재현확인, `agent=Auth`), `/api/coupon/redeem` 비즈니스 로직
+우회(baseline→attack→control 반복 리딤→재현확인, `agent=Auth`).
+`python scripts/confirmed_summary.py`를 돌리면 unconfirmed 9건은 걸러지고
+confirmed 3건만 나온다 — 위 표의 4개 발견 중 negative control
+(`/api/profile/<id>`)을 제외한 3개 CONFIRMED 전부와 일치한다.
 
 > Windows Git Bash(MSYS2)는 `--endpoint` 값이 순수 경로 모양이면 조용히
 > 윈도우 경로로 바꿔치기하는 문제가 있다(다른 팀원 repo에서 실제로 겪음).

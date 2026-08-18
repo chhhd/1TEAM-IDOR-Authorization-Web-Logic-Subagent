@@ -1,5 +1,5 @@
 ---
-name: access-control-checklist
+name: access-control
 description: Diagnostic procedures for IDOR/BOLA, privilege escalation (horizontal & vertical), and business logic bypass vulnerabilities in web applications. Use when testing whether a server actually enforces authorization on objects, roles, or multi-step workflows — as opposed to relying on client-side or UI-only restrictions.
 ---
 
