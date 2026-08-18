@@ -69,19 +69,23 @@ row before committing.
      --hypothesis "<한 줄>" --payload "<실제 페이로드>" \
      --observation "<관찰>" --new-info <yes|no> --status unconfirmed --evidence-ref -
    ```
+   스크립트는 행을 쓴 직후 **`evidence.csv` 한 행에 대해서만 자동으로
+   `git add` + `git commit` + `git push`까지 실행한다** (커밋 메시지에
+   operator/endpoint/agent/status가 자동으로 들어간다). 커밋 자체를 원치
+   않는 경우(드라이런, 여러 행을 모아 직접 한 번에 커밋하고 싶은 경우)에만
+   `--no-commit`을, 로컬 커밋은 하되 push만 미루고 싶으면 `--no-push`를
+   붙인다.
 4. **status는 본인이 1차 판단** — 처음엔 `unconfirmed`로 기록. 재현 테스트
    2~3회 반복까지 확인되면 같은 endpoint/payload로 다시 스크립트를 실행해
    `--status confirmed`로 승격 행을 추가한다 (기존 행을 고치지 않고 새 행을
    추가 — CSV는 append-only 로그다). 판단이 애매하면 CVE 담당(박정근)이나
-   팀원1에게 크로스체크 요청한 뒤 승격한다.
-5. **커밋 & 상태판 갱신** — 사람 오퍼레이터가 직접 실행 (agent가 git commit을
-   대신 하지 않는다):
-   ```bash
-   git add evidence/evidence.csv
-   git commit -m "<이름>: <endpoint> <agent> 시도 N건"
-   git push
-   ```
-   그리고 상태판을 성공/실패/막힘으로 갱신한다.
+   팀원1에게 크로스체크 요청한 뒤 승격한다. 이 승격 행도 스크립트를 통하는 한
+   자동 커밋+푸시된다.
+5. **상태판 갱신 — 사람 오퍼레이터가 직접 실행.** 커밋과 push는 스크립트가
+   매 행마다 자동으로 처리하므로(4번 참고) 별도 git 명령은 필요 없다 —
+   사람은 상태판을 성공/실패/막힘으로 갱신하는 것만 한다. push 실패(네트워크,
+   권한, 원격 diverge 등)는 스크립트가 표준에러로 경고만 하고 계속 진행하므로,
+   그런 경고가 보이면 `git push`를 수동으로 재확인한다.
 6. **오케스트레이터 호출 시점** — 팀원1이 `python scripts/confirmed_summary.py`로
    confirmed 행만 모아 오케스트레이터 세션에 전달한다. unconfirmed/dead-end는
    원본 CSV에 남지만 이 요약에는 들어가지 않는다.

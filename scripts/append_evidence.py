@@ -18,6 +18,13 @@ always run with MSYS_NO_PATHCONV=1 set:
 or `export MSYS_NO_PATHCONV=1` once per shell session before logging.
 Non-Windows shells are unaffected and don't need this.
 
+AUTO-COMMIT + AUTO-PUSH: by default, every successful append also runs
+`git add evidence/evidence.csv` + `git commit` for that one row (message
+includes operator/endpoint/agent/status), then `git push` to the remote.
+Pass --no-commit to skip both and just write the row (e.g. for a dry run or
+when you plan to batch multiple rows into one commit yourself). Pass
+--no-push to commit locally but skip the push.
+
 Usage:
     MSYS_NO_PATHCONV=1 python scripts/append_evidence.py \\
         --target http://127.0.0.1:5000 \\
@@ -35,6 +42,7 @@ Usage:
 import argparse
 import csv
 import os
+import subprocess
 import sys
 from datetime import datetime
 
@@ -73,7 +81,48 @@ def parse_args():
                     help="HH:MM 형식. 생략하면 현재 시각으로 자동 채움 "
                          "(주의: 스키마가 시:분만 기록하므로 날짜 정보는 없음 — "
                          "여러 날짜에 걸친 로그는 evidence/README.md의 한계 참고)")
+    p.add_argument("--no-commit", action="store_true",
+                    help="행 추가 후 자동 git commit(및 push)을 건너뛴다 (기본은 자동 커밋+푸시). "
+                         "드라이런이나 여러 행을 모아 직접 커밋/푸시하고 싶을 때만 사용")
+    p.add_argument("--no-push", action="store_true",
+                    help="자동 커밋은 하되 push는 건너뛴다 (기본은 커밋 후 자동 push까지 실행)")
     return p.parse_args()
+
+
+def auto_commit(csv_path, root, operator, agent, endpoint, status, push=True):
+    """Stage, commit, and (by default) push just the evidence.csv row that
+    was just appended. Failures here are reported but non-fatal: the row is
+    already written to disk regardless of git/network state, so a commit or
+    push problem must never look like a logging problem."""
+    rel = os.path.relpath(csv_path, root)
+    msg = f"{operator}: {endpoint} {agent} 시도 기록 [{status}] (auto)"
+    try:
+        subprocess.run(["git", "add", rel], cwd=root, check=True,
+                        capture_output=True, text=True)
+        result = subprocess.run(["git", "commit", "-m", msg], cwd=root,
+                                 capture_output=True, text=True)
+        if result.returncode == 0:
+            print(f"auto-committed: {msg}")
+        elif "nothing to commit" in (result.stdout + result.stderr):
+            print("auto-commit skipped: no changes staged (unexpected — row was just written)")
+            return
+        else:
+            print(f"auto-commit failed (row is still saved in {rel}): {result.stderr.strip()}", file=sys.stderr)
+            return
+    except FileNotFoundError:
+        print("auto-commit skipped: git not found on PATH (row is still saved)", file=sys.stderr)
+        return
+    except subprocess.CalledProcessError as e:
+        print(f"auto-commit failed at 'git add' (row is still saved in {rel}): {e.stderr.strip()}", file=sys.stderr)
+        return
+
+    if not push:
+        return
+    push_result = subprocess.run(["git", "push"], cwd=root, capture_output=True, text=True)
+    if push_result.returncode == 0:
+        print("auto-pushed to remote")
+    else:
+        print(f"auto-push failed (commit is still saved locally): {push_result.stderr.strip()}", file=sys.stderr)
 
 
 def main():
@@ -101,6 +150,10 @@ def main():
             "evidence_ref": args.evidence_ref,
         })
     print(f"appended: {timestamp} {args.agent} {args.endpoint} [{args.status}] by {args.operator}")
+
+    if not args.no_commit:
+        auto_commit(CSV_PATH, ROOT, args.operator, args.agent, args.endpoint, args.status,
+                    push=not args.no_push)
 
 
 if __name__ == "__main__":
